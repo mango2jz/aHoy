@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>aHoy · 5 · Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@200..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sketch.css">
+</head>
+<body>
+<!-- Static design sketch. All data is synthetic. Not shipped. -->
+<div class="screen page">
+  <header class="top">
+    <a class="mark" href="index.html" title="All sketches">aHoy</a>
+    <span class="crumb">Settings</span>
+    <span class="spacer"></span>
+    <span class="remote" title="Everything in the context is sent to Google."><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 12.5h7a3 3 0 0 0 .4-5.97A4.25 4.25 0 0 0 3.7 7.6 2.5 2.5 0 0 0 4.5 12.5Z"/><path d="M8 11V7.2M6.3 8.8 8 7.1l1.7 1.7"/></svg>Remote: <b>Gemini</b></span>
+    <span class="model tab">gemini/flash</span>
+    <span class="owner">
+      <button class="avatar" aria-haspopup="menu" aria-label="Account menu"><span class="mono-av">AL</span><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5"/></svg></button>
+    </span>
+  </header>
+
+  <div class="settings">
+    <nav class="snav" aria-label="Settings sections">
+      <ul>
+        <li><a href="#model" aria-current="true">Provider and model</a></li>
+        <li><a href="#mode">Command mode</a></li>
+        <li><a href="#allowlist">Safe-mode allowlist</a></li>
+        <li><a href="#lost">Sessions I can no longer open</a></li>
+        <li><a href="#account">Delete my account</a></li>
+      </ul>
+    </nav>
+
+    <main class="sheet">
+      <h1>Settings</h1>
+      <p class="saved">These apply to your own next steps only. Changes save as you make them; last saved <span class="num">14:32</span>.</p>
+
+      <section class="sect" id="model" aria-labelledby="h-model">
+        <h2 id="h-model">Provider and model</h2>
+        <p class="lead">Each step records the provider and model it used, so changing them never rewrites a waypoint you already have.</p>
+        <ul class="choices" role="radiogroup" aria-label="Provider">
+          <li><label class="choice"><input type="radio" name="prov" checked><span class="name">Google Gemini</span><span class="aside">Remote</span><span class="desc">Everything in a step's context, including code from the repo, is sent to Google. The Remote badge in the top bar stays on.</span></label></li>
+          <li><label class="choice" aria-disabled="true"><input type="radio" name="prov" disabled><span class="name">Local model (Ollama)</span><span class="tag">Later</span><span class="desc">Runs on your own machine, so code never leaves it. Not in this release.</span></label></li>
+        </ul>
+        <div class="row2">
+          <div class="field">
+            <label for="model-sel">Model</label>
+            <select class="select m" id="model-sel">
+              <option selected>gemini/flash</option>
+              <option>gemini/flash-lite</option>
+              <option>gemini/pro</option>
+            </select>
+            <p class="help">From the models your aHoy operator allows. Flash is the default. aHoy never asks you for an API key.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="sect" id="mode" aria-labelledby="h-mode">
+        <h2 id="h-mode">Command mode</h2>
+        <p class="lead">How shell commands are handled in your next steps. Reading files and searching work in every mode. Press <kbd>Shift+Tab</kbd> in a session to cycle it.</p>
+        <ul class="choices" role="radiogroup" aria-label="Command mode">
+          <li><label class="choice"><input type="radio" name="mode"><span class="name">Read-only</span><span class="when">For sensitive repos</span><span class="desc">No shell at all. The crew can only list folders, read files and search.</span></label></li>
+          <li><label class="choice"><input type="radio" name="mode" checked><span class="name">Safe <span class="tag">Default</span></span><span class="when">For normal exploring</span><span class="desc">Commands on your allowlist run in the sandbox. Anything else is blocked and logged, and the step carries on without it. You can still run a blocked command once with <b style="font-weight:650;color:var(--ink)">Allow blocked…</b> on that waypoint's wheel.</span></label></li>
+          <li><label class="choice"><input type="radio" name="mode"><span class="name modename"><svg class="tri" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14 13.4H2Z"/></svg>Auto</span><span class="when">For running tests and builds</span><span class="desc">Every command runs in the sandbox without a gate. The mode switch turns red and every step records <span class="pill-auto"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14 13.4H2Z"/></svg>Auto</span>. The sandbox has no network, so installs like <code style="font-size:.88em;background:var(--tint);border-radius:4px;padding:1px 4px">npm install</code> fail.</span></label></li>
+        </ul>
+      </section>
+
+      <section class="sect" id="allowlist" aria-labelledby="h-allow">
+        <h2 id="h-allow">Safe-mode allowlist</h2>
+        <p class="lead">Programs the crew may run in Safe mode. A git entry also names its subcommand. Arguments are free, except the flags listed below.</p>
+        <ul class="allow" aria-label="Allowed commands">
+          <li><code>ls</code><span class="what">list a folder</span><button class="x" aria-label="Remove ls"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>cat</code><span class="what">print a file</span><button class="x" aria-label="Remove cat"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>head</code><span class="what">first lines</span><button class="x" aria-label="Remove head"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>tail</code><span class="what">last lines</span><button class="x" aria-label="Remove tail"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>wc</code><span class="what">count lines</span><button class="x" aria-label="Remove wc"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>find</code><span class="what">find files</span><button class="x" aria-label="Remove find"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>tree</code><span class="what">folder outline</span><button class="x" aria-label="Remove tree"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>rg</code><span class="what">search, fast</span><button class="x" aria-label="Remove rg"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>grep</code><span class="what">search</span><button class="x" aria-label="Remove grep"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>git status</code><span class="what">working tree</span><button class="x" aria-label="Remove git status"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>git log</code><span class="what">history</span><button class="x" aria-label="Remove git log"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>git diff</code><span class="what">changes</span><button class="x" aria-label="Remove git diff"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>git show</code><span class="what">one commit</span><button class="x" aria-label="Remove git show"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+          <li><code>git blame</code><span class="what">who changed a line</span><button class="x" aria-label="Remove git blame"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></li>
+        </ul>
+        <div class="addrow">
+          <label class="lab" for="add-cmd" style="font-size:12.5px;font-weight:650">Add</label>
+          <input class="input m" id="add-cmd" placeholder="sqlite3" autocomplete="off">
+          <button class="btn quiet">Add command</button>
+          <span class="spacer"></span>
+          <button class="btn quiet" disabled aria-disabled="true" title="The list already matches the default">Reset to default</button>
+        </div>
+        <details class="flags">
+          <summary>Always blocked in Safe mode, even for listed programs</summary>
+          <p style="margin:8px 0 0;line-height:1.5">Chaining, pipes and redirects: <code style="font-size:12px;color:var(--ink)">;</code> <code style="font-size:12px;color:var(--ink)">&amp;&amp;</code> <code style="font-size:12px;color:var(--ink)">||</code> <code style="font-size:12px;color:var(--ink)">|</code> <code style="font-size:12px;color:var(--ink)">&gt;</code> <code style="font-size:12px;color:var(--ink)">&lt;</code> <code style="font-size:12px;color:var(--ink)">`</code> <code style="font-size:12px;color:var(--ink)">$(</code> and newlines. Plus these flags, which can run other programs or write files:</p>
+          <table class="ftable">
+            <thead><tr><th scope="col">Program</th><th scope="col">Blocked</th></tr></thead>
+            <tbody>
+              <tr><td><code>find</code></td><td><code>-exec</code> <code>-execdir</code> <code>-ok</code> <code>-okdir</code> <code>-delete</code> <code>-fprint</code> <code>-fprint0</code> <code>-fprintf</code> <code>-fls</code></td></tr>
+              <tr><td><code>rg</code></td><td><code>--pre</code> <code>--pre-glob</code> <code>--search-zip</code> <code>-z</code></td></tr>
+              <tr><td><code>tree</code></td><td><code>-o</code></td></tr>
+              <tr><td><code>git</code></td><td>options before the subcommand (<code>-c</code> <code>-C</code> <code>--git-dir</code> …), <code>--ext-diff</code> <code>--textconv</code> <code>--output</code></td></tr>
+              <tr><td><code>git show</code></td><td>a <code>rev:path</code> whose path is on the denylist</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </section>
+
+      <section class="sect" id="lost" aria-labelledby="h-lost">
+        <h2 id="h-lost">Sessions I can no longer open</h2>
+        <p class="lead" style="margin-top:-8px">None. If you lose access to a repo on GitHub, its sessions move here so you can delete them.</p>
+      </section>
+
+      <section class="sect" id="account" aria-labelledby="h-acct">
+        <h2 id="h-acct">Delete my account</h2>
+        <p class="lead">Removes all your sessions, waypoints, settings and GitHub tokens from aHoy, and revokes its access on GitHub. This cannot be undone.</p>
+        <div class="addrow">
+          <label class="lab" for="confirm" style="font-size:12.5px;font-weight:650">Type <code style="font-size:12px">amara-l</code> to confirm</label>
+          <input class="input m" id="confirm" autocomplete="off" style="max-width:200px">
+          <button class="btn danger" disabled aria-disabled="true" style="color:var(--ink-3);border-color:var(--rule);background:var(--tint)">Delete account</button>
+        </div>
+      </section>
+    </main>
+
+    <aside class="margin" aria-label="In every mode">
+      <h3>In every mode</h3>
+      <ul>
+        <li>A step never stops to ask you. It ends as one waypoint or one error.</li>
+        <li>Commands run in a throw-away sandbox: no network, an empty environment, and the repo mounted read-only.</li>
+        <li><code>.env*</code> <code>*.pem</code> <code>*.key</code> <code>id_*</code> are deleted from every snapshot and refused by name.</li>
+        <li>Git history is not filtered. A secret committed in the past is still in it; Auto mode can reach it.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

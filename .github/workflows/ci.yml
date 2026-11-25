@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    # CI-only throwaway credentials for the service container above.
+    env:
+      AHOY_ENV: test
+      AHOY_OWNER_PASSWORD: ahoy_owner_ci
+      AHOY_APP_PASSWORD: ahoy_app_ci
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://ahoy_owner:ahoy_owner_ci@127.0.0.1:5432/ahoy
+      DATABASE_URL: postgresql+asyncpg://ahoy_app:ahoy_app_ci@127.0.0.1:5432/ahoy
+      # The test suite drops and recreates ahoy_test; DB tests fail (not skip) without Postgres.
+      TEST_MIGRATION_DATABASE_URL: postgresql+asyncpg://ahoy_owner:ahoy_owner_ci@127.0.0.1:5432/ahoy_test
+      TEST_DATABASE_URL: postgresql+asyncpg://ahoy_app:ahoy_app_ci@127.0.0.1:5432/ahoy_test
+      AHOY_REQUIRE_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      # Node is needed by backend/evals fixture tests (`node --test`).
+      # No fixture step yet; node is only made available.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+
+      # ripgrep so the rg-engine search tests run.
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # Service containers start before checkout and cannot mount repo files, so the
+      # role bootstrap runs here with psql against the service.
+      - name: Bootstrap database roles
+        working-directory: .
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: bash deploy/db/bootstrap.sh
+
+      - name: Migrate
+        run: uv run alembic upgrade head && uv run alembic downgrade base && uv run alembic upgrade head
+
+      - name: Test (with coverage)
+        run: uv run pytest --cov=ahoy --cov-branch
+        # TODO(T12, T22, T18): add per-module coverage thresholds
+        # (e.g. --cov-fail-under or a coverage report check) here.
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy src
+
+  # hashFiles() is not allowed in a job-level `if`, so a tiny job detects the
+  # frontend and the frontend job is gated on its output.
+  detect-frontend:
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f frontend/package.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+
+  frontend:
+    runs-on: ubuntu-latest
+    needs: detect-frontend
+    # Skipped until frontend/package.json exists.
+    if: ${{ needs.detect-frontend.outputs.present == 'true' }}
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+
+  # TODO(T38): e2e job — start backend with `--provider mock --github mock`,
+  # then `cd frontend && npm run test:e2e` (Playwright). Needs backend + frontend.
+
+  # TODO(T24): sandbox job — install gVisor (`runsc`), build the ahoy-runner
+  # image and run the sandbox tests under runsc.

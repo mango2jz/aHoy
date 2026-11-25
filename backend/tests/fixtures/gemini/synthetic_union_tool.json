@@ -1,0 +1,17 @@
+{
+  "_synthetic": "Hand-built in the google-genai GenerateContentResponse shape; NOT recorded from real Gemini.",
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"action\": \"tool\", \"tool\": \"read_file\", \"args\": {\"path\": \"main.py\", \"start_line\": 1}, \"why\": \"See what main.py does\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": "STOP"
+    }
+  ],
+  "model_version": "gemini-2.5-flash"
+}

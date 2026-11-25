@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>aHoy · 2 · First run, new session</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@200..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sketch.css">
+</head>
+<body>
+<!-- Static design sketch. All data is synthetic. Not shipped. -->
+<div class="screen">
+  <header class="top">
+    <a class="mark" href="index.html" title="All sketches">aHoy</a>
+    <span class="crumb">New session</span>
+    <span class="spacer"></span>
+    <div class="modes">
+      <span class="lab" id="mode-lab">Commands</span>
+      <div class="seg" role="radiogroup" aria-labelledby="mode-lab">
+        <button role="radio" aria-checked="false" title="No shell. Only list_dir, read_file and search.">Read-only</button>
+        <button role="radio" aria-checked="true" title="Allowlisted commands run. Others are blocked and logged; the step continues.">Safe</button>
+        <button class="auto" role="radio" aria-checked="false" title="Every command runs without a gate. The badge turns red."><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14 13.4H2Z"/></svg>Auto</button>
+      </div>
+      <kbd>Shift+Tab</kbd>
+    </div>
+    <span class="remote" title="Everything in the context is sent to Google."><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 12.5h7a3 3 0 0 0 .4-5.97A4.25 4.25 0 0 0 3.7 7.6 2.5 2.5 0 0 0 4.5 12.5Z"/><path d="M8 11V7.2M6.3 8.8 8 7.1l1.7 1.7"/></svg>Remote: <b>Gemini</b></span>
+    <span class="model tab">gemini/flash</span>
+    <span class="owner">
+      <button class="avatar" aria-haspopup="menu" aria-label="Account menu"><span class="mono-av">AL</span><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5"/></svg></button>
+    </span>
+  </header>
+
+  <div class="body">
+    <section class="canvas" aria-label="Session chart, empty">
+      <svg class="chart" viewBox="0 0 960 690" width="960" height="690" role="img" aria-label="Empty session chart. The Overview will appear in the middle.">
+        <g class="grat">
+          <line x1="0" y1="0" x2="0" y2="690"/><line x1="120" y1="0" x2="120" y2="690"/><line x1="240" y1="0" x2="240" y2="690"/><line x1="360" y1="0" x2="360" y2="690"/><line x1="480" y1="0" x2="480" y2="690"/><line x1="600" y1="0" x2="600" y2="690"/><line x1="720" y1="0" x2="720" y2="690"/><line x1="840" y1="0" x2="840" y2="690"/><line x1="960" y1="0" x2="960" y2="690"/>
+          <line x1="0" y1="30" x2="960" y2="30"/><line x1="0" y1="150" x2="960" y2="150"/><line x1="0" y1="270" x2="960" y2="270"/><line x1="0" y1="390" x2="960" y2="390"/><line x1="0" y1="510" x2="960" y2="510"/><line x1="0" y1="630" x2="960" y2="630"/>
+        </g>
+        <circle cx="480" cy="330" r="26" fill="none" stroke="var(--ink-4)" stroke-width="1.3" stroke-dasharray="3 3.5"/>
+        <circle cx="480" cy="330" r="5" fill="var(--ink-4)"/>
+        <text class="lbl" x="480" y="378" text-anchor="middle" style="fill:var(--ink-2);font-weight:650">Overview</text>
+        <text class="lbl sub" x="480" y="394" text-anchor="middle">Charted here once you open a repo</text>
+      </svg>
+      <div class="status" aria-label="Chart key and counts">
+        <span class="fig"><span class="tab">a</span><b>Session chart</b></span>
+        <span><svg viewBox="0 0 22 12"><circle cx="11" cy="6" r="5" fill="var(--ink-4)"/></svg><span class="num">0</span> waypoints</span>
+        <span><svg viewBox="0 0 22 12"><line x1="1" y1="6" x2="21" y2="6" stroke="var(--ink-5)" stroke-width="1.1"/><circle cx="11" cy="6" r="2.4" fill="var(--ink-4)"/></svg><span class="num">0</span> tool calls</span>
+      </div>
+
+      <div class="strip" aria-label="What happens next, and other first-run states">
+        <div class="inset"><h3><span class="tab">b</span>Preparing</h3>
+          <div class="frame empty">
+            <svg width="34" height="40" viewBox="6 6 40 40" aria-hidden="true"><circle cx="26" cy="26" r="15" fill="none" stroke="var(--ink-4)" stroke-width="1.3" stroke-dasharray="3 3.5"/><circle cx="26" cy="26" r="3" fill="var(--ink-4)"/></svg>
+            <div><p><b style="color:var(--ink)">Preparing <code>tidewater/pocketwiki</code> @ <code>3f9c2e1</code>…</b></p><p>Fetching the code. The Overview starts by itself.</p></div>
+          </div>
+        </div>
+        <div class="inset"><h3><span class="tab">c</span>Your question, queued</h3>
+          <div class="frame empty">
+            <svg width="34" height="40" viewBox="6 6 40 40" aria-hidden="true"><circle cx="16" cy="26" r="6" fill="var(--route)"/><line x1="24" y1="26" x2="38" y2="26" stroke="var(--ink-5)" stroke-width="1.1" stroke-dasharray="2 3"/><circle cx="42" cy="26" r="3.5" fill="none" stroke="var(--ink-4)" stroke-width="1.2"/></svg>
+            <div><p>Runs as a <b style="color:var(--ink)">Custom…</b> steer on the Overview as soon as it lands.</p><p><span class="queued">Queued</span></p></div>
+          </div>
+        </div>
+        <div class="inset"><h3><span class="tab">d</span>Private repo, first time</h3>
+          <div class="frame viewer">
+            <p>Before the session is created: “Code from <code>tidewater/harbor-api</code> will be sent to Google Gemini.” Tick to go on.</p>
+          </div>
+        </div>
+        <div class="inset"><h3><span class="tab">e</span>No repos yet</h3>
+          <div class="frame viewer">
+            <p>aHoy can only read repos you pick on GitHub.</p>
+            <p><a class="link" href="#">Install on GitHub</a></p>
+          </div>
+        </div>
+        <p class="strip-cap">Panels b–e are what follows Open, and other first-run states, drawn for the sketch.</p>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="New session">
+      <div class="scroll">
+        <form class="newform" onsubmit="return false">
+          <div>
+            <h1>Open a repo</h1>
+            <p class="intro">aHoy reads one commit of a repo and charts it, starting with an Overview. It never writes to GitHub.</p>
+          </div>
+
+          <div class="field">
+            <span class="lab" id="repo-lab">Repository</span>
+            <div class="searchbox"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.2"/><path d="m10.2 10.2 3.3 3.3"/></svg><input class="input" placeholder="Search the repos aHoy can read" aria-label="Search repositories"></div>
+            <ul class="choices repo-list" role="radiogroup" aria-labelledby="repo-lab">
+              <li><label class="choice"><input type="radio" name="repo" checked><span class="name"><code>tidewater/pocketwiki</code></span><span class="aside">Public</span><span class="desc">A small Flask wiki · Python · updated <span class="num">2</span> days ago</span></label></li>
+              <li><label class="choice"><input type="radio" name="repo"><span class="name"><code>tidewater/harbor-api</code><svg class="lock" viewBox="0 0 16 16" aria-label="Private" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/></svg></span><span class="aside">Private</span><span class="desc">Billing service · Go · updated <span class="num">5</span> hours ago</span></label></li>
+              <li><label class="choice"><input type="radio" name="repo"><span class="name"><code>amara-l/notes-cli</code></span><span class="aside">Public</span><span class="desc">Rust · updated <span class="num">3</span> weeks ago</span></label></li>
+            </ul>
+            <p class="help">Missing one? <a class="link" href="#">Install aHoy on it on GitHub</a>, then come back.</p>
+          </div>
+
+          <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field">
+              <label for="branch">Branch</label>
+              <select class="select m" id="branch"><option selected>main</option><option>dev</option><option>release/1.4</option></select>
+            </div>
+            <div class="field">
+              <label for="sha">or a tag or SHA</label>
+              <input class="input m" id="sha" placeholder="v1.4.0 or 3f9c2e1" autocomplete="off">
+            </div>
+          </div>
+          <p class="help" style="margin:-10px 0 0;font-size:12px;color:var(--ink-3)">The session stays pinned to that commit, even if the branch moves.</p>
+
+          <div class="field">
+            <label for="q">First question <span style="font-weight:400;color:var(--ink-3)">(optional)</span></label>
+            <textarea class="textarea" id="q" rows="3" placeholder="How does a page get from the database to the browser?"></textarea>
+            <p class="help">The Overview always comes first. Your question then runs from it as a Custom… steer, so you land on an answer, not just a map.</p>
+          </div>
+        </form>
+      </div>
+      <div class="go">
+        <p>Code from <b>tidewater/pocketwiki</b> is sent to Google Gemini while you explore.</p>
+        <button class="btn" type="submit">Open repo</button>
+      </div>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

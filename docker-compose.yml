@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Read by deploy/db/bootstrap.sh on first start (empty data volume). Dev defaults only.
+      AHOY_OWNER_PASSWORD: ${AHOY_OWNER_PASSWORD:-ahoy_owner_dev}
+      AHOY_APP_PASSWORD: ${AHOY_APP_PASSWORD:-ahoy_app_dev}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ahoy_pgdata:/var/lib/postgresql/data
+      # Init scripts run only on an empty volume: `docker compose down -v` to re-run.
+      - ./deploy/db/bootstrap.sh:/docker-entrypoint-initdb.d/10-ahoy-bootstrap.sh:ro
+
+volumes:
+  ahoy_pgdata:

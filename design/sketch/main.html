@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>aHoy · 1 · Workspace, wheel live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@200..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sketch.css">
+</head>
+<body>
+<!-- Static design sketch. All data is synthetic (fake repo "pocketwiki"). Not shipped. -->
+<div class="screen">
+  <header class="top">
+    <a class="mark" href="index.html" title="All sketches">aHoy</a>
+    <span class="repo"><b>tidewater/pocketwiki</b><code title="Pinned to commit 3f9c2e1 (from branch main)">@ 3f9c2e1</code></span>
+    <span class="spacer"></span>
+    <div class="modes">
+      <span class="lab" id="mode-lab">Commands</span>
+      <div class="seg" role="radiogroup" aria-labelledby="mode-lab">
+        <button role="radio" aria-checked="false" title="No shell. Only list_dir, read_file and search.">Read-only</button>
+        <button role="radio" aria-checked="true" title="Allowlisted commands run. Others are blocked and logged; the step continues.">Safe</button>
+        <button class="auto" role="radio" aria-checked="false" title="Every command runs without a gate. The badge turns red."><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14 13.4H2Z"/></svg>Auto</button>
+      </div>
+      <kbd>Shift+Tab</kbd>
+    </div>
+    <span class="remote" title="Everything in the context is sent to Google."><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 12.5h7a3 3 0 0 0 .4-5.97A4.25 4.25 0 0 0 3.7 7.6 2.5 2.5 0 0 0 4.5 12.5Z"/><path d="M8 11V7.2M6.3 8.8 8 7.1l1.7 1.7"/></svg>Remote: <b>Gemini</b></span>
+    <span class="model tab">gemini/flash</span>
+    <span class="owner">
+      <span class="share"><span id="share-lab">Shared</span><button class="switch" role="switch" aria-checked="false" aria-labelledby="share-lab" title="Off: only you can open this session."><span class="knob"></span></button></span>
+      <button class="avatar" aria-haspopup="menu" aria-label="Account menu"><span class="mono-av">AL</span><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5"/></svg></button>
+    </span>
+  </header>
+
+  <div class="body">
+    <section class="canvas" aria-label="Session chart">
+      <svg class="chart" id="chart" tabindex="-1" viewBox="0 0 960 690" width="960" height="690" role="application" aria-roledescription="session chart" aria-label="Session chart"></svg>
+      <div class="status" aria-label="Chart key and counts">
+        <span class="fig"><span class="tab">a</span><b>Session chart</b></span>
+        <span><svg viewBox="0 0 22 12"><line x1="1" y1="6" x2="21" y2="6" stroke="var(--route)" stroke-width="2.2"/><circle cx="11" cy="6" r="3" fill="var(--route)" stroke="var(--chart)" stroke-width="1.5"/></svg>Active route</span>
+        <span><svg viewBox="0 0 22 12"><circle cx="11" cy="6" r="5" fill="var(--ink-4)"/></svg><span class="num" id="k-wp">15</span> waypoints</span>
+        <span><svg viewBox="0 0 22 12"><line x1="1" y1="6" x2="21" y2="6" stroke="var(--ink-5)" stroke-width="1.1"/><circle cx="11" cy="6" r="2.4" fill="var(--ink-4)"/></svg><span class="num" id="k-tc">42</span> tool calls</span>
+        <span><svg viewBox="0 0 22 12"><circle cx="11" cy="6" r="4.3" fill="var(--chart)" stroke="var(--slate)" stroke-width="1.4"/><line x1="8.3" y1="8.7" x2="13.7" y2="3.3" stroke="var(--slate)" stroke-width="1.4" stroke-linecap="round"/></svg><span class="num">1</span> blocked</span>
+        <span class="err"><svg viewBox="0 0 22 12"><circle cx="11" cy="6" r="5" fill="var(--red-tint)" stroke="var(--red)" stroke-width="1.6"/><line x1="11" y1="3.4" x2="11" y2="6.6" stroke="var(--red)" stroke-width="1.6" stroke-linecap="round"/><circle cx="11" cy="8.6" r=".9" fill="var(--red)"/></svg><span class="num">1</span> error</span>
+      </div>
+      <div class="tools">
+        <button class="iconbtn" aria-label="Zoom out"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9"/></svg></button>
+        <button class="iconbtn" aria-label="Zoom in"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg></button>
+        <button class="iconbtn" aria-label="Fit chart to view"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
+      </div>
+      <div class="strip" aria-label="Other states (sketch insets)">
+        
+        <div class="inset"><h3><span class="tab">b</span>Empty session</h3>
+<div class="frame empty">
+  <svg width="34" height="40" viewBox="6 6 40 40" aria-hidden="true"><circle cx="26" cy="26" r="15" fill="none" stroke="var(--ink-4)" stroke-width="1.3" stroke-dasharray="3 3.5"/><circle cx="26" cy="26" r="3" fill="var(--ink-4)"/></svg>
+  <div><p><b style="color:var(--ink)">Nothing charted yet.</b> The Overview starts by itself.</p><p><span class="queued">Queued</span></p></div>
+</div>
+</div>
+        <div class="inset"><h3><span class="tab">c</span>Step running</h3>
+<div class="frame run">
+  <svg width="70" height="60" viewBox="4 18 108 60" aria-hidden="true">
+    <circle cx="26" cy="48" r="17" fill="none" stroke="var(--route)" stroke-width="1" opacity=".22"/>
+    <circle cx="26" cy="48" r="12.5" fill="none" stroke="var(--route)" stroke-width="1.2" opacity=".45"/>
+    <circle cx="26" cy="48" r="8" fill="var(--route)"/>
+    <line x1="38" y1="48" x2="108" y2="48" stroke="var(--route)" stroke-width="2" stroke-dasharray="0" />
+    <line x1="88" y1="48" x2="108" y2="48" stroke="var(--chart)" stroke-width="3" stroke-dasharray="2 4"/>
+    <circle cx="50" cy="48" r="3" fill="var(--route)" stroke="var(--chart)" stroke-width="1.5"/>
+    <circle cx="64" cy="48" r="3" fill="var(--route)" stroke="var(--chart)" stroke-width="1.5"/>
+    <circle cx="78" cy="48" r="3" fill="var(--route)" stroke="var(--chart)" stroke-width="1.5"/>
+    <circle cx="92" cy="48" r="3" fill="none" stroke="var(--route)" stroke-width="1.3"/>
+  </svg>
+  <div><p class="k">Deeper on <span class="num">4</span></p><p>Call <span class="num">4</span>: <code>read_file</code></p><p>No questions mid-step.</p></div>
+</div>
+</div>
+        <div class="inset"><h3><span class="tab">d</span>Mode set to Auto</h3>
+<div class="frame autoset">
+  <div class="seg is-auto" role="radiogroup" aria-label="Command mode (Auto shown)">
+    <button role="radio" aria-checked="false">Read-only</button><button role="radio" aria-checked="false">Safe</button><button class="auto" role="radio" aria-checked="true"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14 13.4H2Z"/></svg>Auto</button>
+  </div>
+  <p>Every command runs, no gate. Steps record <span class="pill-auto"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14 13.4H2Z"/></svg>Auto</span></p>
+</div>
+</div>
+        <div class="inset"><h3><span class="tab">e</span>Shared, opened by a teammate</h3>
+<div class="frame viewer">
+  <div class="vbar"><span class="viewonly"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 8S4 3.6 8 3.6 14.4 8 14.4 8 12 12.4 8 12.4 1.6 8 1.6 8Z"/><circle cx="8" cy="8" r="2"/></svg>View only</span><span class="av-sm" aria-hidden="true">AL</span><span class="by">Shared by amara-l</span></div>
+  <p>No wheel and no mode switch. The tree, waypoints and code stay readable.</p>
+</div>
+</div>
+        <p class="strip-cap">Panels b–e are other states of this screen, drawn for the sketch. They never appear together.</p>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="Selected waypoint">
+      <div class="scroll">
+        <ol class="trail" aria-label="Path from root, with tool calls between waypoints">
+          <svg class="trail-line" width="12" height="178.0" viewBox="0 0 12 178.0" aria-hidden="true"><line x1="6" y1="11.0" x2="6" y2="167.0"/><circle cx="6" cy="24.5" r="2.3"/><circle cx="6" cy="32.0" r="2.3"/><circle cx="6" cy="39.5" r="2.3"/><circle cx="6" cy="47.0" r="2.3"/><circle cx="6" cy="74.0" r="2.3"/><circle cx="6" cy="81.5" r="2.3"/><circle cx="6" cy="89.0" r="2.3"/><circle cx="6" cy="116.0" r="2.3"/><circle cx="6" cy="123.5" r="2.3"/><circle cx="6" cy="131.0" r="2.3"/><circle cx="6" cy="138.5" r="2.3"/><circle cx="6" cy="146.0" r="2.3"/><circle cx="6" cy="153.5" r="2.3"/></svg>
+          <li style="margin-top:0.0px"><span class="pt"></span><span class="num">0</span><a class="t" href="#">Overview</a><span class="w">root</span></li>
+          <li style="margin-top:27.5px"><span class="pt"></span><span class="num">1</span><a class="t" href="#">How a request reaches a page</a><span class="w">Deeper</span></li>
+          <li style="margin-top:20.0px"><span class="pt"></span><span class="num">4</span><a class="t" href="#">The router table in app.py</a><span class="w">Show code</span></li>
+          <li style="margin-top:42.5px" class="cur" aria-current="step"><span class="pt"></span><span class="num">10</span><span class="t">Following render_page</span><span class="w">Crew proposal</span></li>
+        </ol>
+
+        <h1>Following <code>render_page</code></h1>
+        <div class="meta">
+          <span>Step <span class="num">10</span></span>
+          <span>Mode <span class="mode">Safe</span></span>
+          <span><span class="num">6</span> tool calls</span>
+          <span class="conf">High confidence</span>
+          <span class="num">14:31</span>
+        </div>
+
+        <div class="prose">
+          <p><code>render_page</code> is the last stop before the browser. Like a waiter, it fetches a <code>Page</code> from the database, plates it as safe HTML and serves it to <code>page.html</code>.</p>
+        </div>
+
+        <h2>Key points</h2>
+        <ul class="kp">
+          <li>Only the <code>/wiki/&lt;slug&gt;</code> route calls it.</li>
+          <li>It also collects backlinks: the pages that link to this one.</li>
+          <li>Markdown is sanitised first, so templates never see raw user text.</li>
+        </ul>
+
+        <div class="codehead"><h2>Cited code</h2><code>pocketwiki/views.py:47–53</code><a href="#" title="views.py lines 47–53 at 3f9c2e1"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5H3v9.5h9.5V9.5M9 2.8h4.2V7M13 3 7.5 8.5"/></svg>Open on GitHub</a></div>
+        <pre aria-label="pocketwiki/views.py lines 42 to 54"><span class="ln"><span class="no">42</span><span class="src"><span class="k">def</span> <span class="fn">render_page</span>(slug: <span class="t">str</span>):</span></span><span class="ln"><span class="no">43</span><span class="src">    page = Page.query.filter_by(slug=slug).first()</span></span><span class="ln fold"><span class="no">⋯</span><span class="src">3 lines folded: the missing-page branch</span></span><span class="ln hi"><span class="no">47</span><span class="src">    html = render_markdown(page.body)  <span class="c"># sanitised</span></span></span><span class="ln hi"><span class="no">48</span><span class="src">    backlinks = find_backlinks(page.slug)</span></span><span class="ln hi"><span class="no">49</span><span class="src">    <span class="k">return</span> render_template(</span></span><span class="ln hi"><span class="no">50</span><span class="src">        <span class="s">"page.html"</span>,</span></span><span class="ln hi"><span class="no">51</span><span class="src">        page=page,</span></span><span class="ln hi"><span class="no">52</span><span class="src">        body=Markup(html),</span></span><span class="ln hi"><span class="no">53</span><span class="src">        backlinks=backlinks,</span></span><span class="ln"><span class="no">54</span><span class="src">    )</span></span></pre>
+
+        <ul class="refs" aria-label="Code references">
+          <li><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.8h5.3L12.5 5v9.2H4Z"/><path d="M9.2 1.8V5h3.3"/></svg><code>views.py:47–53</code><span>fetches and renders the page</span></li>
+          <li><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.8h5.3L12.5 5v9.2H4Z"/><path d="M9.2 1.8V5h3.3"/></svg><code>templates/page.html:1–22</code><span>where <code>body</code> is printed</span></li>
+          <li class="bad"><svg class="ic warn" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.4 14.2 13H1.8Z"/><path d="M8 6.6v3.2"/><circle cx="8" cy="11.4" r=".5"/></svg><code>templates/base.html:88–96</code><span>Not in file (61 lines). Flagged.</span></li>
+        </ul>
+
+        <h2>Route of this step</h2>
+        <ul class="route-list"><li><span class="d"></span><span class="r">search</span><code>"def render_page"</code><span class="r">1 hit</span></li><li><span class="d"></span><span class="r">read_file</span><code>pocketwiki/views.py</code><span class="r">112 lines</span></li><li><span class="d"></span><span class="r">read_file</span><code>pocketwiki/markdown.py</code><span class="r">64 lines</span></li><li><span class="d"></span><span class="r">list_dir</span><code>pocketwiki/templates/</code><span class="r">7 entries</span></li><li><span class="d"></span><span class="r">read_file</span><code>templates/page.html</code><span class="r">22 lines</span></li><li><span class="d"></span><span class="r">shell</span><code>rg -n find_backlinks</code><span class="r">3 hits</span></li></ul>
+      </div>
+      <div class="foot">The next step sees only this path. To steer, hold a node or press <kbd>Space</kbd>.</div>
+    </aside>
+  </div>
+</div>
+<script src="chart.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  AHOY.chart(document.getElementById("chart"), { current: 10, interactive: true, wheelOpen: q.has("wheel") ? +q.get("wheel") : null });
+</script>
+</body>
+</html>

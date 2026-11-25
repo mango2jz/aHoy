@@ -1,0 +1,42 @@
+# 10 facts about the vendored speak-lab slice in fixture/. Each can be checked by
+# grepping the fixture: every keyword (case-insensitive) appears in expected_file.
+- id: hard-cap
+  question: How long can a live attempt run before the hard cap stops it, and where is that limit defined?
+  keywords: [HARD_CAP_MS, "14 * 60 * 1000"]
+  expected_file: src/hooks/liveSession/constants.ts
+- id: max-active-sessions
+  question: How many active practice sessions may one user hold at once?
+  keywords: [MAX_ACTIVE_SESSIONS, "= 3"]
+  expected_file: src/utils/sessionLifecycle.ts
+- id: stale-session
+  question: After how long idle is an active session treated as abandoned?
+  keywords: [STALE_SESSION_MS, "2 hours"]
+  expected_file: src/utils/sessionLifecycle.ts
+- id: default-min-duration
+  question: What is the fallback minimum speaking time when a scenario sets none?
+  keywords: [DEFAULT_MIN_DURATION_SECONDS, "120"]
+  expected_file: src/utils/flowState.ts
+- id: words-per-second
+  question: How many transcribed words per second count as speech time credit?
+  keywords: [WORDS_PER_SECOND, "2.0"]
+  expected_file: src/utils/flowState.ts
+- id: end-gate-tolerance
+  question: How many seconds of tolerance does the persisted end gate allow below the floor?
+  keywords: [END_GATE_TOLERANCE_SECONDS, "= 10"]
+  expected_file: src/utils/endGate.ts
+- id: wav-target-rate
+  question: What sample rate does the WAV fallback downsample to?
+  keywords: [WAV_TARGET_RATE, "16_000"]
+  expected_file: src/utils/audio/pcm.ts
+- id: farewell-detection
+  question: Which function decides whether the examiner reply is an explicit goodbye?
+  keywords: [looksLikeFarewell, FAREWELL_PATTERNS]
+  expected_file: src/utils/closingDetector.ts
+- id: recorder-mime
+  question: Which MediaRecorder mime types are tried, in order, and which function picks one?
+  keywords: [pickRecorderMime, "audio/webm;codecs=opus"]
+  expected_file: src/utils/audio/recorderMime.ts
+- id: once-gate
+  question: Which helper makes session finalize single-flight so scoring runs once per attempt?
+  keywords: [createOnceGate, OnceGate]
+  expected_file: src/utils/singleFlight.ts

@@ -1,0 +1,17 @@
+{
+  "_synthetic": "Hand-built in the google-genai GenerateContentResponse shape; NOT recorded from real Gemini.",
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"action\": \"tool\", \"tool\": \"search\", \"why\": \"find greet\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": "STOP"
+    }
+  ],
+  "model_version": "gemini-2.5-flash"
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>aHoy · design sketches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@200..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sketch.css">
+<style>
+  .hubpage{max-width:880px;margin:0 auto;padding:56px 0 64px}
+  .hubpage h1{margin:18px 0 8px;font-size:22px;line-height:1.22;font-weight:700;letter-spacing:-.012em}
+  .hubpage .intro{margin:0;max-width:62ch;font-size:15px;line-height:1.58;color:var(--ink-2)}
+  .figs{list-style:none;margin:32px 0 0;padding:0;border-top:1px solid var(--rule)}
+  .figs a{display:grid;grid-template-columns:40px 1fr 140px;gap:6px 16px;align-items:baseline;padding:16px 4px;border-bottom:1px solid var(--rule);text-decoration:none;color:var(--ink)}
+  .figs a:hover{background:var(--paper)}
+  .figs a:hover .t{text-decoration:underline;text-decoration-color:var(--ink-5);text-underline-offset:3px}
+  .figs .n{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;color:var(--ink-3)}
+  .figs .t{font-size:15px;font-weight:650}
+  .figs .f{font-family:var(--mono);font-size:12px;color:var(--ink-3);text-align:right}
+  .figs .d{grid-column:2/3;font-size:13.5px;line-height:1.5;color:var(--ink-2);max-width:64ch}
+  .hubpage .fine{margin:24px 0 0;font-size:12.5px;color:var(--ink-3);line-height:1.5}
+</style>
+</head>
+<body>
+<main class="hubpage">
+  <span class="mark">aHoy</span>
+  <h1>Design sketches</h1>
+  <p class="intro">Static sketches of each aHoy screen at 1440 × 900, drawn as one figure family from DESIGN.md. The data is synthetic: a fake repo called <code style="font-size:.86em;background:var(--tint);border-radius:4px;padding:1px 4px">pocketwiki</code>. None of this ships.</p>
+
+  <ol class="figs">
+    <li><a href="main.html"><span class="n">1</span><span class="t">Workspace, wheel live</span><span class="f">main.html</span><span class="d">The session chart, the reading panel and the steering wheel. Hold any waypoint for 300 ms, drag toward a direction and release; Esc or the centre cancels. With the keyboard, focus a waypoint and press Space, then arrows and Enter.</span></a></li>
+    <li><a href="start.html"><span class="n">2</span><span class="t">First run, new session</span><span class="f">start.html</span><span class="d">An empty chart with the repo picker beside it: choose a repo and a commit, and optionally ask the first question.</span></a></li>
+    <li><a href="blocked.html"><span class="n">3</span><span class="t">Blocked command, allowed once</span><span class="f">blocked.html</span><span class="d">The badge on the waypoint, the wheel's Allow blocked… wedge, and the child step that runs the exact command once.</span></a></li>
+    <li><a href="error.html"><span class="n">4</span><span class="t">Error waypoint selected</span><span class="f">error.html</span><span class="d">A step that failed after its retry, with the panel showing both rejected answers, what was kept and what to do next.</span></a></li>
+    <li><a href="settings.html"><span class="n">5</span><span class="t">Settings</span><span class="f">settings.html</span><span class="d">Provider and model, the three command modes explained, and the Safe-mode allowlist with the flags that stay blocked.</span></a></li>
+  </ol>
+  <p class="fine">Shared pieces: <code>sketch.css</code> holds every token and component; <code>chart.js</code> draws the chart and the wheel for screens 1, 3 and 4.</p>
+</main>
+</body>
+</html>

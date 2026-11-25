@@ -1,0 +1,17 @@
+{
+  "_synthetic": "Hand-built in the google-genai GenerateContentResponse shape; NOT recorded from real Gemini.",
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"action\": \"answer\", \"answer\": {\"title\": \"main.py greets the captain\", \"summary\": \"`main.py` prints a greeting built by `util.greet`.\", \"key_points\": [\"main() calls greet with the name captain.\", \"The module runs main() only when executed directly.\"], \"code_refs\": [{\"path\": \"main.py\", \"start_line\": 3, \"end_line\": 7, \"note\": \"entry point\"}], \"next_moves\": [{\"label\": \"Read util\", \"instruction\": \"Explain how util.greet builds the text\"}], \"confidence\": \"high\"}, \"tool\": null}"
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": "STOP"
+    }
+  ],
+  "model_version": "gemini-2.5-flash"
+}

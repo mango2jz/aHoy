@@ -1,0 +1,10 @@
+{
+  "name": "speak-lab-fixture",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Vendored slice of a speaking-practice app (live session flow + audio utils). aHoy eval fixture.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
