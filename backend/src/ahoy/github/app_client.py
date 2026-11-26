@@ -15,7 +15,7 @@ import stat
 import tempfile
 import time
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Literal, Protocol, cast
 from urllib.parse import quote
 
 import jwt
@@ -57,6 +57,8 @@ class RepoInfo(BaseModel):
     id: int
     full_name: str
     default_branch: str
+    # Absent only in hand-written test bodies: unknown counts as private (the safe side).
+    private: bool = True
     clone_url: str | None = None
 
 
@@ -73,6 +75,10 @@ class Tree(BaseModel):
     entries: list[TreeEntry]
 
 
+CompareStatus = Literal["identical", "behind", "ahead", "diverged"]
+COMPARE_STATUSES: frozenset[str] = frozenset({"identical", "behind", "ahead", "diverged"})
+
+
 class SnapshotError(GitHubError):
     """Fetching or preparing a snapshot failed. The message is redacted."""
 
@@ -87,12 +93,33 @@ class GitHubApp(Protocol):
     async def tree(self, repo: RepoTarget, sha: str) -> Tree:
         """The recursive tree at `sha`, with GitHub's `truncated` flag."""
 
+    async def lookup(self, repo: RepoTarget) -> RepoInfo:
+        """The repo's current name, visibility and default branch, looked up by id."""
+
+    async def ref_exists(self, repo: RepoTarget, ref: str) -> bool:
+        """True if `ref` is exactly the name of a branch or a tag of the repo."""
+
+    async def compare_status(self, repo: RepoTarget, base: str, head: str) -> CompareStatus:
+        """GitHub's comparison of `head` against `base` (`GET compare/base...head`):
+        "identical", "behind" (head is an ancestor of base), "ahead" or "diverged"."""
+
     async def fetch_snapshot(self, repo: RepoTarget, sha: str, dest: Path, depth: int) -> None:
         """Fetch `sha` into `dest`, strip denylisted files, make it read-only."""
 
 
 def check_ref(ref: str) -> str:
-    if not _REF_RE.match(ref) or ref.startswith(("-", "/")) or ".." in ref or len(ref) > 255:
+    """A ref name we are willing to send to GitHub: `[A-Za-z0-9._/-]` plus the git refname
+    rules that apply to those characters (`git check-ref-format`): no `..`, no empty or
+    dot-led path segment, no segment ending in `.lock`, no trailing `/` or `.`."""
+    parts = ref.split("/")
+    if (
+        not _REF_RE.fullmatch(ref)
+        or ref.startswith("-")
+        or ref.endswith(".")
+        or ".." in ref
+        or len(ref) > 255
+        or any(not p or p.startswith(".") or p.endswith(".lock") for p in parts)
+    ):
         raise GitHubError(f"invalid ref: {ref[:80]!r}")
     return ref
 
@@ -142,7 +169,12 @@ class HttpGitHubApp:
         )
         if resp.status_code != 201:
             raise error_for(resp, app_jwt, what="mint installation token")
-        body = resp.json()
+        try:
+            body = resp.json()
+        except ValueError:
+            raise GitHubError("installation token response was not JSON") from None
+        if not isinstance(body, dict):
+            raise GitHubError("installation token response was not a JSON object")
         token = SecretStr(str(body.get("token", "")))
         perms = body.get("permissions") or {}
         repos = body.get("repositories")
@@ -169,7 +201,9 @@ class HttpGitHubApp:
         except GitHubRateLimitedError:
             raise  # rate limiting must never read as "no access"
         except GitHubError as exc:
-            if getattr(exc, "status", None) in (401, 403, 404, 422):
+            # 403/404/422: installation suspended or deleted, or repo removed from it. A 401
+            # means our App JWT is refused (wrong key, clock skew): an outage, not "no access".
+            if getattr(exc, "status", None) in (403, 404, 422):
                 return False
             raise
         return True
@@ -200,6 +234,25 @@ class HttpGitHubApp:
         token = await self.installation_token(repo.installation_id, repo.id)
         return token, await self.repo_info(repo.id, token)
 
+    async def lookup(self, repo: RepoTarget) -> RepoInfo:
+        return (await self._open(repo))[1]
+
+    async def ref_exists(self, repo: RepoTarget, ref: str) -> bool:
+        token, info = await self._open(repo)
+        name = quote(check_ref(ref), safe="/")
+        for kind in ("heads", "tags"):
+            # The singular `git/ref/` endpoint matches exactly (`git/refs/` matches prefixes).
+            resp = await self._http.request(
+                "GET",
+                f"{self._repo_url(info)}/git/ref/{kind}/{name}",
+                auth=SecretStr(bearer(token)),
+            )
+            if resp.status_code == 200:
+                return True
+            if resp.status_code != 404:
+                raise error_for(resp, token, what="look up ref")
+        return False
+
     async def resolve_ref(self, repo: RepoTarget, ref: str | None) -> str:
         token, info = await self._open(repo)
         target = quote(check_ref(ref or info.default_branch), safe="/")
@@ -229,6 +282,26 @@ class HttpGitHubApp:
             truncated=bool(body.get("truncated", False)),
             entries=[TreeEntry.model_validate(e) for e in body.get("tree", [])],
         )
+
+    async def compare_status(self, repo: RepoTarget, base: str, head: str) -> CompareStatus:
+        token, info = await self._open(repo)
+        spec = f"{quote(check_ref(base), safe='/')}...{quote(check_ref(head), safe='/')}"
+        resp = await self._http.request(
+            "GET",
+            f"{self._repo_url(info)}/compare/{spec}",
+            auth=SecretStr(bearer(token)),
+            params={"per_page": "1"},  # only the status is needed, not the commit list
+        )
+        if resp.status_code != 200:
+            raise error_for(resp, token, what="compare commits")
+        try:
+            body = resp.json()
+        except ValueError:
+            raise GitHubError("compare response was not JSON") from None
+        status = body.get("status") if isinstance(body, dict) else None
+        if status not in COMPARE_STATUSES:
+            raise GitHubError("compare response had no known status")
+        return cast(CompareStatus, status)
 
     async def fetch_snapshot(self, repo: RepoTarget, sha: str, dest: Path, depth: int) -> None:
         token, info = await self._open(repo)

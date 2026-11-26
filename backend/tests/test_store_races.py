@@ -169,3 +169,61 @@ async def test_purge_first_then_writer(
 
     assert isinstance(results[0], repo.NotFoundError), results
     assert results[1] == 1
+
+
+@pytest.mark.parametrize("first", ["append", "close"])
+async def test_close_at_tip_races_append_on_the_same_step(
+    first: str,
+    sm: async_sessionmaker[AsyncSession],
+    graph: tuple[UUID, Session, GraphNode, Step],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Whichever writer takes the step lock first wins; the other waits, no deadlock, and
+    the final node always hangs off the real tip."""
+    _uid, session, root, step = graph
+    insert = repo._insert_node
+
+    async def slow_insert(db: AsyncSession, node: GraphNode) -> GraphNode:
+        await asyncio.sleep(0.5)  # holding the session and step locks
+        return await insert(db, node)
+
+    monkeypatch.setattr(repo, "_insert_node", slow_insert)
+    tool = GraphNode(
+        id=uuid4(),
+        session_id=session.id,
+        step_id=step.id,
+        parent_id=root.id,
+        kind="tool",
+        tool={"name": "list_dir", "args": {}, "output": "x"},  # type: ignore[arg-type]
+        model="m",
+        created_at=datetime.now(UTC),
+    )
+    final = error_node(session, step, root.id)
+    async with sm() as a, sm() as b:
+
+        async def do_append() -> Any:
+            return await repo.append_node(a, tool)
+
+        async def do_close() -> Any:
+            return await repo.close_step_at_tip(b, step.id, "error", final)
+
+        one, two = (do_append, do_close) if first == "append" else (do_close, do_append)
+        started = asyncio.create_task(one())
+        await asyncio.sleep(0.2)
+        results = await settle(started, two())
+    appended, closed = results if first == "append" else results[::-1]
+
+    async with sm() as c:
+        nodes = await repo.step_nodes(c, step.id)
+        now = await repo.get_step(c, step.id)
+    assert now is not None and now.status == "error"
+    if first == "append":
+        assert isinstance(appended, GraphNode), results
+        _step, stored, k = closed
+        assert [n.kind for n in nodes] == ["tool", "error"]
+        assert (stored.parent_id, k) == (appended.id, 2)
+    else:
+        assert isinstance(appended, repo.StepStateError), results
+        _step, stored, k = closed
+        assert [n.kind for n in nodes] == ["error"]
+        assert (stored.parent_id, k) == (root.id, 1)

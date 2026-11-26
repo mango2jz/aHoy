@@ -78,6 +78,14 @@ class ReadFileResult(BaseModel):
     note: str | None = None
 
 
+class BinaryFileError(ToolError):
+    """`read_file` found a NUL byte: the file is binary."""
+
+
+class RangeError(ToolError):
+    """`read_file`'s `start_line` is past the end of the file."""
+
+
 # --- shared walker (also used by search's Python fallback) -------------------------
 
 
@@ -307,7 +315,7 @@ def read_file(snapshot: Snapshot, path: str, start_line: int = 1) -> ReadFileRes
         last = start_line + MAX_READ_LINES - 1
         for raw, cut, has_nul in _raw_lines(f):
             if has_nul:  # any NUL anywhere in the file means binary
-                raise ToolError(f"binary file: {path!r}")
+                raise BinaryFileError(f"binary file: {path!r}")
             total += 1
             if byte_capped or not start_line <= total <= last:
                 continue
@@ -320,8 +328,8 @@ def read_file(snapshot: Snapshot, path: str, start_line: int = 1) -> ReadFileRes
             used += size
             clipped += was_clipped
 
-    if total and start_line > total:
-        raise ToolError(f"start_line {start_line} is past the end ({total} lines)")
+    if start_line > max(total, 1):  # an empty file has only line 1
+        raise RangeError(f"start_line {start_line} is past the end ({total} lines)")
     end_line = start_line + len(lines) - 1
     return ReadFileResult(
         path=relative(snapshot, target),

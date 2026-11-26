@@ -18,6 +18,7 @@ from ahoy.github.http import (
     API_URL,
     WEB_URL,
     GitHubAuthError,
+    GitHubError,
     GitHubHTTP,
     basic,
     bearer,
@@ -123,18 +124,32 @@ class HttpGitHubUser:
         )
         if resp.status_code != 200:
             raise error_for(resp, self._client_secret, *secrets, what="token request")
-        payload = resp.json()
+        try:
+            payload = resp.json()
+        except ValueError:
+            raise GitHubError("GitHub token response was not JSON") from None
+        if not isinstance(payload, dict):
+            raise GitHubError("GitHub token response was not a JSON object")
         if "error" in payload or not payload.get("access_token"):
             # GitHub reports OAuth errors as 200 + {"error": ...}.
             code = redact(str(payload.get("error", "no access_token")), *secrets)
             raise GitHubAuthError(f"GitHub refused the token request: {code[:80]}")
         refresh = payload.get("refresh_token")
-        return UserTokens(
-            access_token=SecretStr(payload["access_token"]),
-            refresh_token=SecretStr(refresh) if refresh else None,
-            expires_at=_expiry(payload.get("expires_in"), now),
-            refresh_token_expires_at=_expiry(payload.get("refresh_token_expires_in"), now),
-        )
+        try:
+            # SecretStr validates the type only when built through a model, hence UserTokens.
+            return UserTokens.model_validate(
+                {
+                    "access_token": payload["access_token"],
+                    "refresh_token": refresh or None,
+                    "expires_at": _expiry(payload.get("expires_in"), now),
+                    "refresh_token_expires_at": _expiry(
+                        payload.get("refresh_token_expires_in"), now
+                    ),
+                }
+            )
+        except (ValueError, TypeError, OverflowError):
+            # Never chain: the cause may quote the token values.
+            raise GitHubError("GitHub token response was malformed") from None
 
     async def exchange_code(self, code: str, code_verifier: str, redirect_uri: str) -> UserTokens:
         return await self._token_request(

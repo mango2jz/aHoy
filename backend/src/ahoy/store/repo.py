@@ -180,6 +180,17 @@ async def create_session(
     return await _write(db, work)
 
 
+async def get_session(db: AsyncSession, session_id: UUID) -> Session | None:
+    """The session, or None. No access check: callers go through `authz.load_session`."""
+    stmt = select(*SessionRow.__table__.c).where(SessionRow.id == session_id)
+
+    async def work() -> Session | None:
+        row = (await db.execute(stmt)).one_or_none()
+        return None if row is None else _session(row)
+
+    return await _read(db, work)
+
+
 async def set_session_status(
     db: AsyncSession, session_id: UUID, status: SessionStatus, reason: str | None = None
 ) -> Session:
@@ -195,6 +206,50 @@ async def set_session_status(
         if row is None:
             raise NotFoundError(f"session {session_id} not found")
         return _session(row)
+
+    return await _write(db, work)
+
+
+async def list_owned_sessions(db: AsyncSession, owner_id: UUID) -> list[Session]:
+    """The owner's sessions, newest first. No access check: callers filter by repo access."""
+    stmt = (
+        select(*SessionRow.__table__.c)
+        .where(SessionRow.owner_id == owner_id)
+        .order_by(SessionRow.created_at.desc(), SessionRow.id.desc())
+    )
+    return await _read(db, lambda: _all(db, stmt, _session))
+
+
+async def finish_preparing(
+    db: AsyncSession, session_id: UUID, status: SessionStatus, reason: str | None = None
+) -> bool:
+    """Set the preparation outcome only if the session is still `preparing` (it may have
+    been marked failed by startup recovery meanwhile). Returns whether it applied."""
+    stmt = (
+        update(SessionRow)
+        .where(SessionRow.id == session_id, SessionRow.status == "preparing")
+        .values(status=status, status_reason=reason)
+        .returning(SessionRow.id)
+    )
+
+    async def work() -> bool:
+        return (await db.execute(stmt)).one_or_none() is not None
+
+    return await _write(db, work)
+
+
+async def fail_preparing_sessions(db: AsyncSession, reason: str) -> int:
+    """Mark every session still `preparing` as `failed` with `reason` (startup: the
+    preparation task died with the previous process). Returns how many were marked."""
+    stmt = (
+        update(SessionRow)
+        .where(SessionRow.status == "preparing")
+        .values(status="failed", status_reason=reason)
+        .returning(SessionRow.id)
+    )
+
+    async def work() -> int:
+        return len((await db.execute(stmt)).all())
 
     return await _write(db, work)
 
@@ -366,6 +421,40 @@ async def close_step(
     return await _write(db, lambda: _close(db, step_id, status, final_node))
 
 
+async def get_step(db: AsyncSession, step_id: UUID) -> Step | None:
+    """The step, or None. No access check: callers authorize through its session."""
+    stmt = select(*StepRow.__table__.c).where(StepRow.id == step_id)
+
+    async def work() -> Step | None:
+        row = (await db.execute(stmt)).one_or_none()
+        return None if row is None else _step(row)
+
+    return await _read(db, work)
+
+
+async def session_steps(db: AsyncSession, session_id: UUID) -> list[Step]:
+    """The session's steps, oldest first."""
+    stmt = (
+        select(*StepRow.__table__.c)
+        .where(StepRow.session_id == session_id)
+        .order_by(StepRow.created_at, StepRow.id)
+    )
+    return await _read(db, lambda: _all(db, stmt, _step))
+
+
+async def ready_sessions_without_overview(db: AsyncSession) -> list[Session]:
+    """Ready sessions that have no Overview step (no step with parent_node_id NULL)."""
+    overview = select(StepRow.id).where(
+        StepRow.session_id == SessionRow.id, StepRow.parent_node_id.is_(None)
+    )
+    stmt = (
+        select(*SessionRow.__table__.c)
+        .where(SessionRow.status == "ready", ~overview.exists())
+        .order_by(SessionRow.created_at, SessionRow.id)
+    )
+    return await _read(db, lambda: _all(db, stmt, _session))
+
+
 async def open_steps(db: AsyncSession) -> list[Step]:
     stmt = (
         select(*StepRow.__table__.c)
@@ -373,6 +462,55 @@ async def open_steps(db: AsyncSession) -> list[Step]:
         .order_by(StepRow.created_at, StepRow.id)
     )
     return await _read(db, lambda: _all(db, stmt, _step))
+
+
+async def _tip(db: AsyncSession, step: Step) -> UUID | None:
+    """Where a step's next node hangs: its latest node, else its parent node, else the root."""
+    last = (
+        await db.execute(
+            select(GraphNodeRow.id)
+            .where(GraphNodeRow.step_id == step.id)
+            .order_by(*(c.desc() for c in _NODE_ORDER))
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if last is not None:
+        return last
+    if step.parent_node_id is not None:
+        return step.parent_node_id
+    return (  # the Overview step hangs off the root
+        await db.execute(
+            select(GraphNodeRow.id).where(
+                GraphNodeRow.session_id == step.session_id, GraphNodeRow.kind == "root"
+            )
+        )
+    ).scalar_one_or_none()
+
+
+async def _step_node_count(db: AsyncSession, step_id: UUID) -> int:
+    stmt = select(func.count()).select_from(GraphNodeRow).where(GraphNodeRow.step_id == step_id)
+    return int((await db.execute(stmt)).scalar_one())
+
+
+async def close_step_at_tip(
+    db: AsyncSession, step_id: UUID, status: StepStatus, final_node: GraphNode
+) -> tuple[Step, GraphNode, int]:
+    """Like close_step, but the final node hangs off the step's current tip, read inside the
+    transaction (`final_node.parent_id` is ignored): the step's latest node, else its parent
+    node, else the session root.
+
+    Returns the closed step, the node as stored, and the node's 1-based position among the
+    step's nodes (its event seq is twice that; see harness/events.py).
+    """
+
+    async def work() -> tuple[Step, GraphNode, int]:
+        await _lock_session(db, await _step_session_id(db, step_id))
+        step = await _lock_open_step(db, step_id)
+        node = final_node.model_copy(update={"parent_id": await _tip(db, step)})
+        closed, stored = await _close(db, step_id, status, node)
+        return closed, stored, await _step_node_count(db, step_id)
+
+    return await _write(db, work)
 
 
 async def mark_interrupted(db: AsyncSession, step_id: UUID) -> tuple[Step, GraphNode]:
@@ -385,28 +523,11 @@ async def mark_interrupted(db: AsyncSession, step_id: UUID) -> tuple[Step, Graph
     async def work() -> tuple[Step, GraphNode]:
         await _lock_session(db, await _step_session_id(db, step_id))
         step = await _lock_open_step(db, step_id)
-        last = (
-            await db.execute(
-                select(GraphNodeRow.id)
-                .where(GraphNodeRow.step_id == step_id)
-                .order_by(*(c.desc() for c in _NODE_ORDER))
-                .limit(1)
-            )
-        ).scalar_one_or_none()
-        parent = last if last is not None else step.parent_node_id
-        if parent is None:  # the Overview step hangs off the root
-            parent = (
-                await db.execute(
-                    select(GraphNodeRow.id).where(
-                        GraphNodeRow.session_id == step.session_id, GraphNodeRow.kind == "root"
-                    )
-                )
-            ).scalar_one_or_none()
         node = GraphNode(
             id=uuid4(),
             session_id=step.session_id,
             step_id=step.id,
-            parent_id=parent,
+            parent_id=await _tip(db, step),
             kind="error",
             mode=step.mode,
             error=INTERRUPTED_ERROR,
@@ -456,6 +577,17 @@ async def load_nodes(db: AsyncSession, session_id: UUID) -> list[GraphNode]:
         .order_by(*_NODE_ORDER)
     )
     return await _read(db, lambda: _all(db, stmt, _node))
+
+
+async def get_node(db: AsyncSession, node_id: UUID) -> GraphNode | None:
+    """The node, or None. No access check: callers compare its session_id."""
+    stmt = select(*GraphNodeRow.__table__.c).where(GraphNodeRow.id == node_id)
+
+    async def work() -> GraphNode | None:
+        row = (await db.execute(stmt)).one_or_none()
+        return None if row is None else _node(row)
+
+    return await _read(db, work)
 
 
 async def step_nodes(db: AsyncSession, step_id: UUID) -> list[GraphNode]:
@@ -563,11 +695,18 @@ __all__ = [
     "close_step",
     "create_session",
     "create_step",
+    "fail_preparing_sessions",
+    "finish_preparing",
+    "get_node",
+    "get_step",
+    "list_owned_sessions",
     "load_nodes",
     "mark_interrupted",
     "open_steps",
     "purge",
+    "ready_sessions_without_overview",
     "root_path",
+    "session_steps",
     "set_session_status",
     "start_step",
     "step_nodes",

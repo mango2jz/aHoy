@@ -33,7 +33,7 @@ from ahoy.github import (
     make_app_jwt,
     remove_snapshot,
 )
-from ahoy.github.app_client import SnapshotError
+from ahoy.github.app_client import SnapshotError, check_ref
 from ahoy.github.http import error_for
 from ahoy.github.mock import fixture_bare_repos
 
@@ -260,6 +260,34 @@ def test_repo_lookup_mismatch_refused(
 
 
 @respx.mock
+def test_can_mint_for_app_jwt_refused_is_an_error(rsa_keys: tuple[SecretStr, bytes]) -> None:
+    respx.post(f"{API}/app/installations/7/access_tokens").mock(
+        return_value=httpx.Response(401, json={"message": "A JSON web token could not be decoded"})
+    )
+    with pytest.raises(GitHubHTTPError) as exc:
+        run(make_app(rsa_keys).can_mint_for(7, 42))
+    assert exc.value.status == 401
+
+
+@pytest.mark.parametrize(
+    ("resp", "match"),
+    [
+        (httpx.Response(201, text="<html>oops</html>"), "not JSON"),
+        (httpx.Response(201, json=["token"]), "not a JSON object"),
+    ],
+)
+@respx.mock
+def test_installation_token_bad_body_is_github_error(
+    rsa_keys: tuple[SecretStr, bytes], resp: httpx.Response, match: str
+) -> None:
+    respx.post(f"{API}/app/installations/7/access_tokens").mock(return_value=resp)
+    with pytest.raises(GitHubError, match=match):
+        run(make_app(rsa_keys).installation_token(7, 42))
+    with pytest.raises(GitHubError, match=match):  # never read as "no access"
+        run(make_app(rsa_keys).can_mint_for(7, 42))
+
+
+@respx.mock
 def test_can_mint_for_server_error_raises(rsa_keys: tuple[SecretStr, bytes]) -> None:
     respx.post(f"{API}/app/installations/7/access_tokens").mock(return_value=httpx.Response(500))
     with pytest.raises(GitHubHTTPError) as exc:
@@ -279,7 +307,11 @@ def test_resolve_ref_default_branch_and_sha(rsa_keys: tuple[SecretStr, bytes]) -
     assert commit.calls.last.request.headers["Accept"] == "application/vnd.github.sha"
 
 
-@pytest.mark.parametrize("ref", ["-bad", "a..b", "x y", "/abs", "a;b"])
+@pytest.mark.parametrize(
+    "ref",
+    ["-bad", "a..b", "x y", "/abs", "a;b", ".", "a/./b", "a//b", "a/", "a.lock", "a/b.lock/c",
+     "a/.hidden", "a."],
+)  # fmt: skip
 def test_resolve_ref_rejects_odd_refs(rsa_keys: tuple[SecretStr, bytes], ref: str) -> None:
     with respx.mock:
         respx.post(f"{API}/app/installations/7/access_tokens").mock(return_value=token_ok())
@@ -310,6 +342,99 @@ def test_tree_exposes_truncated(rsa_keys: tuple[SecretStr, bytes], truncated: bo
     assert tree.truncated is truncated
     assert [e.path for e in tree.entries] == ["a.py", "src"]
     assert route.calls.last.request.url.params["recursive"] == "1"
+
+
+@pytest.mark.parametrize("status", ["identical", "behind", "ahead", "diverged"])
+@respx.mock
+def test_compare_status(rsa_keys: tuple[SecretStr, bytes], status: str) -> None:
+    respx.post(f"{API}/app/installations/7/access_tokens").mock(return_value=token_ok())
+    repo_lookup()
+    route = respx.get(f"{API}/repos/octo/demo/compare/trunk...{SHA}").mock(
+        return_value=httpx.Response(200, json={"status": status, "commits": []})
+    )
+    assert run(make_app(rsa_keys).compare_status(REPO, "trunk", SHA)) == status
+    assert route.calls.last.request.headers["Authorization"] == f"Bearer {INSTALL_TOKEN}"
+    assert route.calls.last.request.url.params["per_page"] == "1"
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(200, json={"status": "weird"}),
+        httpx.Response(200, json=["x"]),
+        httpx.Response(200, text="not json"),
+        httpx.Response(404, json={"message": "Not Found"}),
+    ],
+)
+def test_compare_status_errors(rsa_keys: tuple[SecretStr, bytes], response: httpx.Response) -> None:
+    with respx.mock:
+        respx.post(f"{API}/app/installations/7/access_tokens").mock(return_value=token_ok())
+        repo_lookup()
+        respx.get(f"{API}/repos/octo/demo/compare/trunk...{SHA}").mock(return_value=response)
+        with pytest.raises(GitHubError) as info:
+            run(make_app(rsa_keys).compare_status(REPO, "trunk", SHA))
+        assert INSTALL_TOKEN not in str(info.value)
+
+
+def test_compare_status_rejects_odd_refs(rsa_keys: tuple[SecretStr, bytes]) -> None:
+    with respx.mock:
+        respx.post(f"{API}/app/installations/7/access_tokens").mock(return_value=token_ok())
+        repo_lookup()
+        with pytest.raises(GitHubError, match="invalid ref"):
+            run(make_app(rsa_keys).compare_status(REPO, "trunk", "a..b"))
+
+
+@pytest.mark.parametrize("ref", ["main", "feature/x-1", "v1.2.3", "refs/pull/7/head", "a.b"])
+def test_check_ref_accepts_ordinary_refs(ref: str) -> None:
+    assert check_ref(ref) == ref
+
+
+def test_check_ref_refuses_empty() -> None:
+    with pytest.raises(GitHubError, match="invalid ref"):
+        check_ref("")
+
+
+@respx.mock
+def test_lookup_reports_visibility(rsa_keys: tuple[SecretStr, bytes]) -> None:
+    respx.post(f"{API}/app/installations/7/access_tokens").mock(return_value=token_ok())
+    repo_lookup(private=False)
+    info = run(make_app(rsa_keys).lookup(REPO))
+    assert (info.full_name, info.default_branch, info.private) == ("octo/demo", "trunk", False)
+
+
+@pytest.mark.parametrize(
+    ("heads", "tags", "expected"),
+    [(200, None, True), (404, 200, True), (404, 404, False)],
+)
+def test_ref_exists(
+    rsa_keys: tuple[SecretStr, bytes], heads: int, tags: int | None, expected: bool
+) -> None:
+    with respx.mock:
+        respx.post(f"{API}/app/installations/7/access_tokens").mock(return_value=token_ok())
+        repo_lookup()
+        h = respx.get(f"{API}/repos/octo/demo/git/ref/heads/feature/x").mock(
+            return_value=httpx.Response(heads, json={})
+        )
+        t = respx.get(f"{API}/repos/octo/demo/git/ref/tags/feature/x").mock(
+            return_value=httpx.Response(tags or 500, json={})
+        )
+        assert run(make_app(rsa_keys).ref_exists(REPO, "feature/x")) is expected
+        assert h.calls.last.request.headers["Authorization"] == f"Bearer {INSTALL_TOKEN}"
+        assert t.called is (tags is not None)
+
+
+def test_ref_exists_errors(rsa_keys: tuple[SecretStr, bytes]) -> None:
+    with respx.mock:
+        respx.post(f"{API}/app/installations/7/access_tokens").mock(return_value=token_ok())
+        repo_lookup()
+        respx.get(f"{API}/repos/octo/demo/git/ref/heads/x").mock(
+            return_value=httpx.Response(502, json={"message": "bad gateway"})
+        )
+        with pytest.raises(GitHubError) as info:
+            run(make_app(rsa_keys).ref_exists(REPO, "x"))
+        assert INSTALL_TOKEN not in str(info.value)
+        with pytest.raises(GitHubError, match="invalid ref"):
+            run(make_app(rsa_keys).ref_exists(REPO, "a//b"))
 
 
 # --- User side -------------------------------------------------------------------------
@@ -361,6 +486,30 @@ def test_exchange_code_error_is_redacted() -> None:
     with pytest.raises(GitHubAuthError, match="bad_verification_code") as exc:
         run(make_user().exchange_code("c", "v", "http://x/cb"))
     assert CLIENT_SECRET not in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(200, text=f"<html>{REFRESH_TOKEN}</html>"),
+        httpx.Response(200, json=[USER_TOKEN]),
+        httpx.Response(200, json={"access_token": 12345}),
+        httpx.Response(200, json={"access_token": USER_TOKEN, "expires_in": "soon"}),
+    ],
+    ids=["not-json", "not-object", "token-not-string", "bad-expiry"],
+)
+@respx.mock
+def test_malformed_token_response_is_a_plain_github_error(response: httpx.Response) -> None:
+    """Not a refusal (GitHubAuthError) but an outage, so a refresh maps it to 503."""
+    respx.post(f"{WEB}/login/oauth/access_token").mock(return_value=response)
+    with pytest.raises(GitHubError) as exc:
+        run(make_user().refresh(SecretStr(REFRESH_TOKEN)))
+    assert not isinstance(exc.value, GitHubAuthError)
+    assert exc.value.__cause__ is None
+    assert exc.value.__context__ is None or exc.value.__suppress_context__
+    for secret in (USER_TOKEN, REFRESH_TOKEN, CLIENT_SECRET):
+        assert secret not in str(exc.value)
+        assert secret not in "".join(traceback.format_exception(exc.value))
 
 
 @respx.mock

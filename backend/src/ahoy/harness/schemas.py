@@ -12,10 +12,14 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    GetJsonSchemaHandler,
     RootModel,
+    StringConstraints,
     TypeAdapter,
     model_validator,
 )
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema, PydanticOmit
 
 ToolName = Literal["list_dir", "read_file", "search", "shell"]
 
@@ -27,11 +31,30 @@ class ToolTurn(BaseModel):
     why: str
 
 
+class _HarnessSet:
+    """Field marker: left out of the validation-mode JSON Schema, kept in serialization mode.
+
+    The model is asked for turns with the validation-mode schema (`model_json_schema()`,
+    which the Gemini provider uses for both wires), so it never sees a harness-set field;
+    API responses (serialization mode) still carry it.
+    """
+
+    def __get_pydantic_json_schema__(
+        self, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        if handler.mode == "validation":
+            raise PydanticOmit
+        return handler(core_schema)
+
+
 class CodeRef(BaseModel):
     path: str
     start_line: int
     end_line: int
     note: str
+    # Set by the harness after checking the ref against the snapshot (T6); never asked of
+    # the model. False shows a warning badge.
+    valid: Annotated[bool, _HarnessSet()] = True
 
 
 class NextMove(BaseModel):
@@ -207,10 +230,12 @@ class SteerRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    parent_id: UUID
+    parent_id: UUID  # a waypoint or error node of the session
     wedge: str
-    instruction: str
-    allow_command: str | None = None
+    instruction: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
+    ]
+    allow_command: str | None = None  # stored on the step; used from T13 on
 
 
 class Steer(BaseModel):

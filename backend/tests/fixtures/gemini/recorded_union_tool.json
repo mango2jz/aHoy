@@ -1,0 +1,57 @@
+{
+  "sdk_http_response": {
+    "headers": {
+      "x-gemini-service-tier": "standard",
+      "content-type": "application/json; charset=UTF-8",
+      "vary": "Origin, X-Origin, Referer",
+      "content-encoding": "gzip",
+      "date": "Wed, 25 Nov 2026 04:47:34 GMT",
+      "server": "scaffolding on HTTPServer2",
+      "x-xss-protection": "0",
+      "x-frame-options": "SAMEORIGIN",
+      "x-content-type-options": "nosniff",
+      "server-timing": "gfet4t7; dur=6515",
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "transfer-encoding": "chunked"
+    }
+  },
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"action\": \"tool\", \"tool\": \"read_file\", \"args\": {\"path\": \"main.py\", \"start_line\": 1}, \"why\": \"Read main.py to understand what it does.\"}",
+            "thought_signature": "EsYCCsMCAWkUfRPT9MevGL3RVl6MzDPsOLKZf0_2C7LWMR4FFUJi832FNQk_al2fFY1Yc6-rAKEpb7Ryo52TC-2B_huz302yIWBTu4R-3RCM8EYVxmvka39fKtIVhkYdIkcMjnF2nxgbvrvK0rr9xkRvtlo_TPELZ1QfTO8uGvGdWVWorC9AoOWp6NYA7cVJL-_kmLHKpw7SMALP4G2DStXNrJatvGLZ_rmm2lDknhRR5jox31zpEZ9HTgpwjli5dXwN4TQ4ubEUUUsAEC5on08j_FUr-Uz3AHN6-vwuNR_kxP4-rTc4-4-1YVNq2A4TntbwTQyZ7ihTe60DMhRds6iqKw3SSuiVcUlKjaSmOqln3smSCmpvaAYxCzxswEmNFMO6KNHblgFSU34rZizCN4plJED_3fkx3uXAMSUwrVCat00G9JpsEzo="
+          }
+        ],
+        "role": "model"
+      },
+      "finish_reason": "STOP",
+      "index": 0
+    }
+  ],
+  "model_version": "gemini-3.6-flash",
+  "response_id": "YGgGa6yKLqvL2roPmquC2AY",
+  "usage_metadata": {
+    "candidates_token_count": 48,
+    "prompt_token_count": 167,
+    "prompt_tokens_details": [
+      {
+        "modality": "TEXT",
+        "token_count": 167
+      }
+    ],
+    "thoughts_token_count": 54,
+    "total_token_count": 269
+  },
+  "automatic_function_calling_history": [],
+  "parsed": {
+    "action": "tool",
+    "tool": "read_file",
+    "args": {
+      "path": "main.py",
+      "start_line": 1
+    },
+    "why": "Read main.py to understand what it does."
+  }
+}

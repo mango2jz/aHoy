@@ -53,7 +53,7 @@ ANSWER = AnswerTurn(action="answer", answer=WAYPOINT)
 
 def load(name: str) -> types.GenerateContentResponse:
     body: dict[str, Any] = json.loads((FIXTURES / f"{name}.json").read_text())
-    body.pop("_synthetic")
+    body.pop("_synthetic", None)  # only hand-built fixtures carry this label
     return types.GenerateContentResponse.model_validate(body)
 
 
@@ -139,6 +139,9 @@ def test_mock_refuses_tool_turn_when_answer_forced() -> None:
         ("synthetic_union_answer", "union", AnswerTurn),
         ("synthetic_flat_tool", "flat", ToolTurn),
         ("synthetic_flat_answer", "flat", AnswerTurn),
+        # Real responses from gemini-3.5-flash, recorded by --probe on 2026-11-25.
+        ("recorded_union_tool", "union", ToolTurn),
+        ("recorded_union_answer", "union", AnswerTurn),
     ],
 )
 def test_gemini_parses_fixture(fixture: str, wire: WireMode, kind: type) -> None:

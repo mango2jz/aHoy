@@ -6,6 +6,10 @@ process from the vendored fixture via `evals/make_fixture_git.py` into a temp di
 bare repos. `fetch_snapshot` runs the real snapshot code path against them, so the
 denylist stripping is exercised. Tokens look like GitHub's (`ghu_…`, `ghr_…`, `ghs_…`)
 so the secret scans are meaningful. Refuses to construct unless AHOY_ENV is dev or test.
+
+User tokens are stateless: `ghu_`/`ghr_` + issue time + a MAC (fixed mock key) + login, so a
+token stored by one backend process still resolves to its user after a restart (E2E restarts
+the backend). Only revocations and spent refresh tokens are in memory, per process.
 """
 
 from __future__ import annotations
@@ -13,6 +17,7 @@ from __future__ import annotations
 import atexit
 import base64
 import hashlib
+import hmac
 import os
 import secrets
 import shutil
@@ -21,6 +26,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -28,6 +34,8 @@ from pathlib import Path
 from pydantic import SecretStr
 
 from ahoy.github.app_client import (
+    CompareStatus,
+    RepoInfo,
     RepoTarget,
     Tree,
     TreeEntry,
@@ -44,6 +52,11 @@ INSTALLATION_ID = 5001
 INSTALLATION_ACCOUNT = ("fixture", 9001)
 
 USERS: dict[str, int] = {"alice": 1001, "bob": 1002, "mallory": 1003}
+
+# Fixed on purpose: user tokens must verify across processes. Mock only (see the env guard).
+_USER_TOKEN_KEY = b"ahoy-mock-github-user-tokens"
+_ISSUED_DIGITS = 20
+_MAC_CHARS = 16
 
 
 @dataclass(frozen=True)
@@ -100,6 +113,26 @@ def _token(prefix: str) -> str:
     return prefix + "".join(secrets.choice(alphabet) for _ in range(36))
 
 
+def _signed_token(prefix: str, user: str, issued: int) -> str:
+    body = f"{issued:0{_ISSUED_DIGITS}d}"
+    mac = hmac.new(_USER_TOKEN_KEY, f"{prefix}{body}{user}".encode(), hashlib.sha256)
+    return f"{prefix}{body}{mac.hexdigest()[:_MAC_CHARS]}{user}"
+
+
+def _parse_token(prefix: str, token: str) -> tuple[str, int] | None:
+    """(user, issue time) of a token `_signed_token` made, or None for anything else."""
+    if not token.startswith(prefix):
+        return None
+    rest = token[len(prefix) :]
+    issued_text, user = rest[:_ISSUED_DIGITS], rest[_ISSUED_DIGITS + _MAC_CHARS :]
+    if not (issued_text.isascii() and issued_text.isdigit()) or not user:
+        return None
+    issued = int(issued_text)
+    if not hmac.compare_digest(_signed_token(prefix, user, issued), token):
+        return None
+    return user, issued
+
+
 def _s256(verifier: str) -> str:
     digest = hashlib.sha256(verifier.encode()).digest()
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
@@ -118,12 +151,14 @@ class _Grant:
 @dataclass
 class _State:
     codes: dict[str, _Grant] = field(default_factory=dict)
-    access: dict[str, str] = field(default_factory=dict)  # access token -> user
-    refresh: dict[str, str] = field(default_factory=dict)  # refresh token -> user
+    last_issued: int = 0  # strictly increasing issue times (ns) in this process
+    signed_out: dict[str, int] = field(default_factory=dict)  # user -> tokens issued <= die
+    spent: set[str] = field(default_factory=set)  # refresh tokens already used
     revoked: set[tuple[str, int]] = field(default_factory=set)
     removed: set[int] = field(default_factory=set)
     truncated: set[int] = field(default_factory=set)
     names: dict[int, str] = field(default_factory=dict)  # repo id -> current name
+    private: dict[int, bool] = field(default_factory=dict)  # repo id -> visibility override
 
 
 class MockGitHub:
@@ -166,6 +201,13 @@ class MockGitHub:
         """The repo's current name (`MockRepo.full_name` is the original one)."""
         return self._state.names.get(repo.id, repo.full_name)
 
+    def set_private(self, repo: str | int, private: bool) -> None:
+        """Change the repo's visibility (as its owner would on GitHub)."""
+        self._state.private[self._repo(repo).id] = private
+
+    def is_private(self, repo: MockRepo) -> bool:
+        return self._state.private.get(repo.id, repo.private)
+
     def set_tree_truncated(self, repo: str | int, truncated: bool) -> None:
         """Make `tree()` report GitHub's `truncated: true` for `repo` (too large to list)."""
         rid = self._repo(repo).id
@@ -196,8 +238,18 @@ class MockGitHub:
                 return r
         raise KeyError(repo)
 
+    def _owner(self, prefix: str, token: SecretStr) -> str | None:
+        """The user a live `prefix` token belongs to (revoked ones are dead)."""
+        parsed = _parse_token(prefix, token.get_secret_value())
+        if parsed is None:
+            return None
+        user, issued = parsed
+        if user not in self.users or issued <= self._state.signed_out.get(user, -1):
+            return None
+        return user
+
     def _user_for(self, token: SecretStr) -> str:
-        user = self._state.access.get(token.get_secret_value())
+        user = self._owner("ghu_", token)
         if user is None:
             raise GitHubHTTPError("mock GitHub: bad credentials", status=401)
         return user
@@ -205,15 +257,14 @@ class MockGitHub:
     def _user_can_read(self, user: str, repo: MockRepo) -> bool:
         if (user, repo.id) in self._state.revoked:
             return False
-        if repo.private:
+        if self.is_private(repo):
             # A GitHub App user token sees private repos only where the App is installed.
             return user in repo.members and repo.id not in self._state.removed
         return True
 
     def _issue_tokens(self, user: str) -> UserTokens:
-        access, refresh = _token("ghu_"), _token("ghr_")
-        self._state.access[access] = user
-        self._state.refresh[refresh] = user
+        issued = self._state.last_issued = max(time.time_ns(), self._state.last_issued + 1)
+        access, refresh = _signed_token("ghu_", user, issued), _signed_token("ghr_", user, issued)
         now = datetime.now(UTC)
         return UserTokens(
             access_token=SecretStr(access),
@@ -253,9 +304,11 @@ class MockGitHub:
         return self._issue_tokens(grant.user)
 
     async def refresh(self, refresh_token: SecretStr) -> UserTokens:
-        user = self._state.refresh.pop(refresh_token.get_secret_value(), None)  # single use
-        if user is None:
+        user = self._owner("ghr_", refresh_token)
+        value = refresh_token.get_secret_value()
+        if user is None or value in self._state.spent:  # single use
             raise GitHubAuthError("GitHub refused the token request: bad_refresh_token")
+        self._state.spent.add(value)
         return self._issue_tokens(user)
 
     async def get_user(self, token: SecretStr) -> GitHubUserInfo:
@@ -275,7 +328,12 @@ class MockGitHub:
         if installation_id != INSTALLATION_ID:
             raise _not_found("installation")
         return [
-            Repo(id=r.id, full_name=self.name_of(r), private=r.private, default_branch="main")
+            Repo(
+                id=r.id,
+                full_name=self.name_of(r),
+                private=self.is_private(r),
+                default_branch="main",
+            )
             for r in REPOS
             if r.id not in self._state.removed
             and user in r.members
@@ -291,12 +349,13 @@ class MockGitHub:
         return self._user_can_read(user, repo)
 
     async def revoke_grant(self, token: SecretStr) -> None:
-        user = self._state.access.get(token.get_secret_value())
+        user = self._owner("ghu_", token)
         if user is None:
             return
-        for table in (self._state.access, self._state.refresh):
-            for tok in [t for t, u in table.items() if u == user]:
-                del table[tok]
+        # Every token issued so far dies, also by an earlier process (issue times are
+        # wall-clock ns); later sign-ins get newer issue times.
+        now = self._state.last_issued = max(time.time_ns(), self._state.last_issued)
+        self._state.signed_out[user] = now
 
     # --- GitHubApp --------------------------------------------------------------------
 
@@ -312,6 +371,40 @@ class MockGitHub:
         rev = check_ref(ref) if ref else "HEAD"
         sha = self._bare_git(mock, "rev-parse", "--verify", "--end-of-options", f"{rev}^{{commit}}")
         return check_sha(sha.strip())
+
+    async def lookup(self, repo: RepoTarget) -> RepoInfo:
+        mock = self._target(repo)
+        return RepoInfo(
+            id=mock.id,
+            full_name=self.name_of(mock),
+            default_branch="main",
+            private=self.is_private(mock),
+        )
+
+    async def ref_exists(self, repo: RepoTarget, ref: str) -> bool:
+        mock = self._target(repo)
+        name = check_ref(ref)
+        for kind in ("heads", "tags"):
+            try:
+                self._bare_git(mock, "show-ref", "--verify", "--quiet", f"refs/{kind}/{name}")
+            except GitHubHTTPError:
+                continue
+            return True
+        return False
+
+    async def compare_status(self, repo: RepoTarget, base: str, head: str) -> CompareStatus:
+        mock = self._target(repo)
+
+        def count(rng: str) -> int:
+            return int(self._bare_git(mock, "rev-list", "--count", "--end-of-options", rng))
+
+        b, h = check_ref(base), check_ref(head)
+        ahead, behind = count(f"{b}..{h}"), count(f"{h}..{b}")
+        if ahead and behind:
+            return "diverged"
+        if ahead:
+            return "ahead"
+        return "behind" if behind else "identical"
 
     async def tree(self, repo: RepoTarget, sha: str) -> Tree:
         mock = self._target(repo)

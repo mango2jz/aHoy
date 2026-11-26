@@ -111,6 +111,21 @@ def test_revoke_grant_kills_tokens(gh: MockGitHub) -> None:
     assert run(gh.can_read_repo(tok, DEMO.id)) is False
 
 
+def test_user_tokens_survive_a_restart(gh: MockGitHub) -> None:
+    tokens = run(gh.exchange_code(gh.issue_code("bob"), "v", "http://x/cb"))
+    restarted = MockGitHub(ahoy_env="test")  # a new process knows nothing of `gh`'s state
+    assert run(restarted.get_user(tokens.access_token)).login == "bob"
+    assert run(restarted.can_read_repo(tokens.access_token, DEMO.id)) is True
+    assert tokens.refresh_token is not None
+    assert run(restarted.get_user(run(restarted.refresh(tokens.refresh_token)).access_token))
+    # Stateless does not mean forgeable: another login or a tampered MAC is refused.
+    value = tokens.access_token.get_secret_value()
+    forged = value.removesuffix("bob") + "alice"
+    tampered = value[:24] + ("0" if value[24] != "0" else "1") + value[25:]
+    for bad in (forged, tampered, "ghr_" + value[4:]):
+        assert run(restarted.can_read_repo(SecretStr(bad), PUBLIC.id)) is False
+
+
 def test_repo_access_matrix(gh: MockGitHub) -> None:
     alice, bob, mallory = (sign_in(gh, u) for u in ("alice", "bob", "mallory"))
     assert run(gh.can_read_repo(alice, DEMO.id)) is True

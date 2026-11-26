@@ -15,7 +15,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from ahoy.config import Settings
+from ahoy.config import env_files
 from ahoy.store.models import Base
 
 config = context.config
@@ -30,9 +30,7 @@ class _MigrationSettings(BaseSettings):
     """Only the migration URL, from the same env files as Settings, without the app's
     other validation (migrations do not need APP_ORIGIN or provider secrets)."""
 
-    model_config = SettingsConfigDict(
-        env_file=Settings.model_config.get("env_file"), extra="ignore"
-    )
+    model_config = SettingsConfigDict(extra="ignore")
 
     migration_database_url: SecretStr | None = None
 
@@ -40,7 +38,7 @@ class _MigrationSettings(BaseSettings):
 def _database_url() -> str:
     url = config.get_main_option("sqlalchemy.url")
     if not url:
-        secret = _MigrationSettings().migration_database_url
+        secret = _MigrationSettings(_env_file=env_files()).migration_database_url
         url = secret.get_secret_value() if secret is not None else ""
     if not url:
         raise RuntimeError(
